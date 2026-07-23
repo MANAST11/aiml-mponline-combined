@@ -1,0 +1,19 @@
+# API Keys & Secrets
+.env
+
+# Local Database & Raw Data
+data/
+storage/
+storage_test/
+
+# Python Cache & Virtual Environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+venv/
+ENV/
+.pytest_cache/
+.vscode/
