@@ -1,0 +1,215 @@
+import os
+import sys
+import glob
+import cv2
+import mediapipe as mp
+import argparse
+import kagglehub
+
+def get_dataset_images():
+    """Resolves the Kaggle dataset path and returns a list of image file paths."""
+    print("Locating Kaggle dataset...")
+    try:
+        dataset_path = kagglehub.dataset_download('freak2209/face-data')
+        images_dir = os.path.join(dataset_path, 'Custom_Data', 'images', 'train')
+        if not os.path.exists(images_dir):
+            print(f"Error: Images directory not found at {images_dir}")
+            return []
+        
+        # Support common image extensions
+        image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp']
+        images = []
+        for ext in image_extensions:
+            images.extend(glob.glob(os.path.join(images_dir, ext)))
+        
+        images.sort()
+        return images
+    except Exception as e:
+        print(f"Failed to load dataset: {e}")
+        return []
+
+def draw_beautiful_box(img, x1, y1, x2, y2, label=None, color=(0, 255, 255), thickness=2):
+    """Draws a premium-looking bounding box with corner accents and label."""
+    # Main rectangle
+    cv2.rectangle(img, (x1, y1), (x2, y2), color, 1)
+    
+    # Draw thicker corner accents for a sleek aesthetic
+    line_len = min(x2 - x1, y2 - y1) // 5
+    accent_thick = thickness + 1
+    
+    # Top-left corner
+    cv2.line(img, (x1, y1), (x1 + line_len, y1), color, accent_thick)
+    cv2.line(img, (x1, y1), (x1, y1 + line_len), color, accent_thick)
+    # Top-right corner
+    cv2.line(img, (x2, y1), (x2 - line_len, y1), color, accent_thick)
+    cv2.line(img, (x2, y1), (x2, y1 + line_len), color, accent_thick)
+    # Bottom-left corner
+    cv2.line(img, (x1, y2), (x1 + line_len, y2), color, accent_thick)
+    cv2.line(img, (x1, y2), (x1, y2 - line_len), color, accent_thick)
+    # Bottom-right corner
+    cv2.line(img, (x2, y2), (x2 - line_len, y2), color, accent_thick)
+    cv2.line(img, (x2, y2), (x2, y2 - line_len), color, accent_thick)
+    
+    # Label drawing
+    if label:
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.5
+        font_thick = 1
+        
+        # Get text size
+        (text_width, text_height), baseline = cv2.getTextSize(label, font, font_scale, font_thick)
+        
+        # Make a filled background block for label text
+        cv2.rectangle(img, (x1, y1 - text_height - 6), (x1 + text_width + 6, y1), color, -1)
+        
+        # Put text (contrast color: dark blue/black for bright background)
+        text_color = (0, 0, 0) if sum(color) > 380 else (255, 255, 255)
+        cv2.putText(img, label, (x1 + 3, y1 - 4), font, font_scale, text_color, font_thick, cv2.LINE_AA)
+
+def run_face_detection(source, min_confidence):
+    # Initialize Mediapipe Face Detection
+    mp_face_detection = mp.solutions.face_detection
+    
+    # Load face detector
+    # model_selection: 0 for faces within 2 meters from the camera, 1 for faces within 5 meters
+    model_sel = 0 if source == '0' or source == 'webcam' else 1
+    
+    detector = mp_face_detection.FaceDetection(
+        model_selection=model_sel, 
+        min_detection_confidence=min_confidence
+    )
+    
+    print("\n--- Controls ---")
+    print("Press 'q' or 'ESC' to exit the program.")
+    if source == 'dataset':
+        print("Press ANY OTHER KEY to view the next image.")
+    print("----------------\n")
+    
+    if source == 'dataset':
+        image_paths = get_dataset_images()
+        if not image_paths:
+            print("No images found in the dataset.")
+            return
+            
+        print(f"Loaded {len(image_paths)} images from dataset.")
+        
+        for idx, img_path in enumerate(image_paths):
+            print(f"[{idx+1}/{len(image_paths)}] Processing: {os.path.basename(img_path)}")
+            img = cv2.imread(img_path)
+            if img is None:
+                continue
+                
+            h, w, c = img.shape
+            
+            # Mediapipe requires RGB
+            rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            results = detector.process(rgb_img)
+            
+            # Draw detections
+            if results.detections:
+                for detection in results.detections:
+                    bbox = detection.location_data.relative_bounding_box
+                    x1 = int(bbox.xmin * w)
+                    y1 = int(bbox.ymin * h)
+                    x2 = int((bbox.xmin + bbox.width) * w)
+                    y2 = int((bbox.ymin + bbox.height) * h)
+                    
+                    # Clip coordinates to image boundaries
+                    x1, y1 = max(0, x1), max(0, y1)
+                    x2, y2 = min(w - 1, x2), min(h - 1, y2)
+                    
+                    score = detection.score[0]
+                    label = f"Face: {score:.2f}"
+                    draw_beautiful_box(img, x1, y1, x2, y2, label=label)
+            
+            # Show image
+            window_name = "Kaggle Dataset Face Detection (Mediapipe)"
+            cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+            cv2.imshow(window_name, img)
+            
+            # Wait for key press
+            key = cv2.waitKey(0)
+            if key & 0xFF == ord('q') or key & 0xFF == 27:
+                break
+                
+        cv2.destroyAllWindows()
+        
+    else:
+        # Webcam or Video source
+        is_webcam = False
+        if source == 'webcam' or source == '0':
+            video_source = 0
+            is_webcam = True
+            print("Opening Webcam...")
+        else:
+            video_source = source
+            print(f"Opening Video File: {source}")
+            
+        cap = cv2.VideoCapture(video_source)
+        if not cap.isOpened():
+            print(f"Error: Could not open source: {source}")
+            return
+            
+        window_name = "Live Face Detection (Mediapipe)"
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                if is_webcam:
+                    print("Error: Failed to grab frame from webcam.")
+                else:
+                    print("End of video file reached.")
+                break
+                
+            # If webcam, flip horizontally for natural mirror feel
+            if is_webcam:
+                frame = cv2.flip(frame, 1)
+                
+            h, w, c = frame.shape
+            
+            # Convert to RGB
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = detector.process(rgb_frame)
+            
+            # Draw detections
+            if results.detections:
+                for detection in results.detections:
+                    bbox = detection.location_data.relative_bounding_box
+                    x1 = int(bbox.xmin * w)
+                    y1 = int(bbox.ymin * h)
+                    x2 = int((bbox.xmin + bbox.width) * w)
+                    y2 = int((bbox.ymin + bbox.height) * h)
+                    
+                    # Clip coordinates
+                    x1, y1 = max(0, x1), max(0, y1)
+                    x2, y2 = min(w - 1, x2), min(h - 1, y2)
+                    
+                    score = detection.score[0]
+                    label = f"Face: {score:.2f}"
+                    draw_beautiful_box(frame, x1, y1, x2, y2, label=label)
+            
+            # Add FPS counter or status indicator
+            status_text = "Live Stream" if is_webcam else "Video Stream"
+            cv2.putText(frame, status_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
+            
+            cv2.imshow(window_name, frame)
+            
+            # Refresh every 1ms, check if 'q' is pressed
+            key = cv2.waitKey(1)
+            if key & 0xFF == ord('q') or key & 0xFF == 27:
+                break
+                
+        cap.release()
+        cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Mediapipe Face Detector")
+    parser.add_argument('--source', type=str, default='dataset', 
+                        help="Source of inputs: 'dataset' (Kaggle), 'webcam' or '0' (live webcam), or path to an image/video file.")
+    parser.add_argument('--confidence', type=float, default=0.5,
+                        help="Minimum detection confidence threshold (default: 0.5)")
+    
+    args = parser.parse_args()
+    
+    run_face_detection(args.source, args.confidence)
