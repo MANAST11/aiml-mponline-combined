@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocuMind AI — RAG PDF Assistant</title>
+    <!-- Google Fonts: Inter and Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-brain brand-icon"></i>
+                <h1>DocuMind <span>AI</span></h1>
+            </div>
+            
+            <div class="section-title">Upload Knowledge</div>
+            <div class="upload-area" id="drop-zone">
+                <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                <p>Drag & drop PDF here</p>
+                <span>or click to browse</span>
+                <input type="file" id="file-input" accept=".pdf" style="display: none;">
+            </div>
+
+            <div class="section-header-row">
+                <div class="section-title">Ingested Documents</div>
+                <button class="clear-db-btn" id="clear-db-btn" title="Delete all files & reset database">
+                    <i class="fa-solid fa-trash-can"></i> Clear All
+                </button>
+            </div>
+            <div class="document-list" id="document-list">
+                <div class="doc-list-empty">
+                    <i class="fa-regular fa-file-pdf"></i>
+                    <p>No documents uploaded yet.</p>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="status-dot online"></span>
+                    <span>Local RAG Server Online</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-container">
+            <header class="chat-header">
+                <div class="chat-info">
+                    <h2>RAG Document Assistant</h2>
+                    <p>Interactive queries powered by Gemini 1.5 Flash</p>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" id="clear-chat-btn" title="Clear Chat">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div class="chat-messages" id="chat-messages">
+                <!-- Welcome Message -->
+                <div class="message system-message">
+                    <div class="message-content">
+                        <div class="message-text">
+                            <h3>Welcome to DocuMind AI! 👋</h3>
+                            <p>I am a Retrieval-Augmented Generation (RAG) chatbot designed to read, analyze, and answer questions about your PDF documents with absolute precision.</p>
+                            <div class="features-grid">
+                                <div class="feature-item">
+                                    <i class="fa-solid fa-bolt"></i>
+                                    <strong>Fast & Precise</strong>
+                                    <span>Uses Gemini 1.5 Flash for low-latency generation.</span>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="fa-solid fa-quote-right"></i>
+                                    <strong>Source Citations</strong>
+                                    <span>Highlights filenames and pages for validation.</span>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="fa-solid fa-laptop"></i>
+                                    <strong>Battery Friendly</strong>
+                                    <span>Runs serverless APIs for zero local CPU stress.</span>
+                                </div>
+                            </div>
+                            <p class="instruction-text">To start, upload one or more PDF files in the sidebar and type your questions below.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typing-indicator" style="display: none;">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <span>DocuMind is reading source chunks...</span>
+            </div>
+
+            <!-- Input Area -->
+            <footer class="chat-footer">
+                <form class="input-form" id="chat-form">
+                    <input type="text" id="chat-input" placeholder="Ask a question about your uploaded documents..." required autocomplete="off">
+                    <button type="submit" class="send-btn" id="send-btn">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
