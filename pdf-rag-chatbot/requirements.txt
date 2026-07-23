@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+llama-index
+llama-index-llms-gemini
+llama-index-embeddings-huggingface
+tf-keras
+python-dotenv
+pypdf
+python-multipart
